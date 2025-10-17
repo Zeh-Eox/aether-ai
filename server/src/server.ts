@@ -2,21 +2,31 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import "dotenv/config";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
+import router from "./routes/routes";
+import connectCloudinary from "./configs/cloudinary";
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-app.use(clerkMiddleware());
+async function startServer() {
+  await connectCloudinary();
 
-app.get("/", (req: Request, res: Response) => {
-  res.send("Server is Live");
-});
+  app.use(cors());
+  app.use(express.json());
+  app.use(clerkMiddleware());
 
-app.use(requireAuth());
+  app.get("/", (req: Request, res: Response) => {
+    res.send("Server is Live");
+  });
 
-const PORT: number = Number(process.env.PORT) || 3000;
+  app.use(requireAuth());
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-});
+  app.use('/api/ai', router);
+
+  const PORT: number = Number(process.env.PORT) || 3000;
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
