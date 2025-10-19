@@ -15,17 +15,22 @@
   "dependencies": {
     "@clerk/express": "^1.7.37",
     "@neondatabase/serverless": "^1.0.2",
+    "@types/pdf-parse": "^1.1.5",
     "axios": "^1.12.2",
+    "canvas": "^3.2.0",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "multer": "^2.0.2",
-    "openai": "^6.3.0"
+    "openai": "^6.3.0",
+    "pdf-parse": "^2.4.3"
   },
   "devDependencies": {
+    "@types/canvasjs": "^1.9.11",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/multer": "^2.0.0",
     "@types/node": "^24.7.2",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
