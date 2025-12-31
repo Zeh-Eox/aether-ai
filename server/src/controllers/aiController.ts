@@ -1,4 +1,3 @@
-import AI from "../configs/aiConfigs";
 import database from "../configs/database";
 import { clerkClient } from "@clerk/express";
 import { AuthenticatedRequest } from "../types";
@@ -6,18 +5,41 @@ import { Response } from "express";
 import axios from "axios";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-import * as pdfParse from "pdf-parse";
+import FormData from "form-data";
+import { callGemini } from "../utils/callGemini";
+import { extractTextFromPDF } from "../utils/pdfReader";
+import { getAuthUser } from "../utils/authUser";
+
+const incrementFreeUsage = async (
+  userId: string,
+  free_usage: number,
+  plan?: string
+) => {
+  if (plan !== "premium") {
+    await clerkClient.users.updateUserMetadata(userId, {
+      privateMetadata: { free_usage: free_usage + 1 },
+    });
+  }
+};
+
+const checkFreeLimit = (plan?: string, free_usage = 0) => {
+  return plan !== "premium" && free_usage >= 10;
+};
 
 
-export const generateArticle = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+export const generateArticle = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<Response> => {
   try {
-    const { userId } = await req.auth!();
-    const { prompt, length } = req.body;
-    const plan = req.plan;
-    const free_usage = req.free_usage ?? 0;
+    const userId = await getAuthUser(req, res);
+    if (!userId) return res;
 
-    if (plan !== "premium" && free_usage >= 10) {
-      return res.json({
+    const { prompt, length } = req.body;
+    const { plan, free_usage = 0 } = req;
+
+    if (checkFreeLimit(plan, free_usage)) {
+      return res.status(403).json({
         success: false,
         message: "Limit reached. Upgrade your plan to continue.",
       });
@@ -30,44 +52,38 @@ export const generateArticle = async (req: AuthenticatedRequest, res: Response):
       });
     }
 
-    const response = await AI.chat.completions.create({
-      model: process.env.AI_AGENT_MODEL!,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: Number(length),
-    });
-
-    const content = response.choices?.[0]?.message?.content ?? "";
+    const content = await callGemini(
+      `Write a ${length}-word article about: ${prompt}`
+    );
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, ${prompt}, ${content}, 'article')
     `;
 
-    if (plan !== "premium") {
-      await clerkClient.users.updateUserMetadata(userId, {
-        privateMetadata: { free_usage: free_usage + 1 },
-      });
-    }
+    await incrementFreeUsage(userId, free_usage, plan);
 
     return res.json({ success: true, content });
-  } catch (error: any) {
-    console.error("generateArticle error:", error.message);
-    return res.json({ success: false, message: error.message });
+  } catch (error) {
+    console.error("generateArticle error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 
-
-export const generateBlogTitle = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+export const generateBlogTitle = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<Response> => {
   try {
-    const { userId } = await req.auth!();
-    const { prompt } = req.body;
-    const plan = req.plan;
-    const free_usage = req.free_usage ?? 0;
+    const userId = await getAuthUser(req, res);
+    if (!userId) return res;
 
-    if (plan !== "premium" && free_usage >= 10) {
-      return res.json({
+    const { prompt } = req.body;
+    const { plan, free_usage = 0 } = req;
+
+    if (checkFreeLimit(plan, free_usage)) {
+      return res.status(403).json({
         success: false,
         message: "Limit reached. Upgrade your plan to continue.",
       });
@@ -80,43 +96,38 @@ export const generateBlogTitle = async (req: AuthenticatedRequest, res: Response
       });
     }
 
-    const response = await AI.chat.completions.create({
-      model: process.env.AI_AGENT_MODEL!,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 100,
-    });
-
-    const content = response.choices?.[0]?.message?.content ?? "";
+     const content = await callGemini(
+      `Generate a short, catchy blog title about: ${prompt}`
+    );
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, ${prompt}, ${content}, 'blog-title')
     `;
 
-    if (plan !== "premium") {
-      await clerkClient.users.updateUserMetadata(userId, {
-        privateMetadata: { free_usage: free_usage + 1 },
-      });
-    }
+    await incrementFreeUsage(userId, free_usage, plan);
 
     return res.json({ success: true, content });
-  } catch (error: any) {
-    console.error("generateBlogTitle error:", error.message);
-    return res.json({ success: false, message: error.message });
+  } catch (error) {
+    console.error("generateBlogTitle error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 
-
-export const generateImage = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+export const generateImage = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<Response> => {
   try {
-    const { userId } = await req.auth!();
+    const userId = await getAuthUser(req, res);
+    if (!userId) return res;
+
     const { prompt, publish } = req.body;
-    const plan = req.plan;
+    const { plan } = req;
 
     if (plan !== "premium") {
-      return res.json({
+      return res.status(403).json({
         success: false,
         message: "This feature is available for premium users only.",
       });
@@ -129,42 +140,54 @@ export const generateImage = async (req: AuthenticatedRequest, res: Response): P
       });
     }
 
-    const formData = new FormData()
-    formData.append('prompt', prompt)
+    const formData = new FormData();
+    formData.append("prompt", prompt);
 
-    const { data } = await axios.post(process.env.CLIPDROP_API_URL || "https://clipdrop-api.co/text-to-image/v1", formData, {
-      headers: {
-        'x-api-key': process.env.CLIPDROP_API_KEY
-      },
-      responseType: 'arraybuffer'
-    })
+    const { data } = await axios.post(
+      process.env.CLIPDROP_API_URL ||
+        "https://clipdrop-api.co/text-to-image/v1",
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          "x-api-key": process.env.CLIPDROP_API_KEY!,
+        },
+        responseType: "arraybuffer",
+      }
+    );
 
-    const imageBase64 = `data:image/png;base64,${Buffer.from(data, 'binary').toString('base64')}`;
+    const imageBase64 = `data:image/png;base64,${Buffer.from(data).toString(
+      "base64"
+    )}`;
 
     const { secure_url } = await cloudinary.uploader.upload(imageBase64);
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type, publish)
-      VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ? true : false})
+      VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${!!publish})
     `;
 
     return res.json({ success: true, content: secure_url });
-  } catch (error: any) {
-    console.error("generateImage error:", error.message);
-    return res.json({ success: false, message: error.message });
+  } catch (error) {
+    console.error("generateImage error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 
-
-export const removeImageBackground = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+export const removeImageBackground = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<Response> => {
   try {
-    const { userId } = await req.auth!();
+    const userId = await getAuthUser(req, res);
+    if (!userId) return res;
+
     const image = req.file;
-    const plan = req.plan;
+    const { plan } = req;
 
     if (plan !== "premium") {
-      return res.json({
+      return res.status(403).json({
         success: false,
         message: "This feature is available for premium users only.",
       });
@@ -178,13 +201,10 @@ export const removeImageBackground = async (req: AuthenticatedRequest, res: Resp
     }
 
     const { secure_url } = await cloudinary.uploader.upload(image.path, {
-      transformation: [
-        {
-          effect: "background_removal",
-          background_removal: "remove_the_background",
-        }
-      ]
+      transformation: [{ effect: "background_removal" }],
     });
+
+    fs.unlinkSync(image.path);
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
@@ -192,41 +212,44 @@ export const removeImageBackground = async (req: AuthenticatedRequest, res: Resp
     `;
 
     return res.json({ success: true, content: secure_url });
-  } catch (error: any) {
-    console.error("removeImageBackground error:", error.message);
-    return res.json({ success: false, message: error.message });
+  } catch (error) {
+    console.error("removeImageBackground error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 
-
-export const removeImageObject = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+export const removeImageObject = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<Response> => {
   try {
-    const { userId } = await req.auth!();
-    const { object } = req.body;
+    const userId = await getAuthUser(req, res);
+    if (!userId) return res;
+
     const image = req.file;
-    const plan = req.plan;
+    const { object } = req.body;
+    const { plan } = req;
 
     if (plan !== "premium") {
-      return res.json({
+      return res.status(403).json({
         success: false,
         message: "This feature is available for premium users only.",
       });
     }
 
-    if (!image) {
+    if (!image || !object) {
       return res.status(400).json({
         success: false,
-        message: "Missing file",
+        message: "Missing file or object",
       });
     }
 
-    const { public_id } = await cloudinary.uploader.upload(image.path);
-
-    const { secure_url } = await cloudinary.uploader.upload(`cloudinary://remove_object/v1/${public_id}`, {
-      transformation: [{effect: `gen_remove:${object}`}],
-      resource_type: 'image'
+    const { secure_url } = await cloudinary.uploader.upload(image.path, {
+      transformation: [{ effect: `gen_remove:${object}` }],
     });
+
+    fs.unlinkSync(image.path);
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
@@ -234,22 +257,26 @@ export const removeImageObject = async (req: AuthenticatedRequest, res: Response
     `;
 
     return res.json({ success: true, content: secure_url });
-  } catch (error: any) {
-    console.error("removeImageBackground error:", error.message);
-    return res.json({ success: false, message: error.message });
+  } catch (error) {
+    console.error("removeImageObject error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 
-
-export const reviewResume = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+export const reviewResume = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<Response> => {
   try {
-    const { userId } = await req.auth!();
+    const userId = await getAuthUser(req, res);
+    if (!userId) return res;
+
     const resume = req.file;
-    const plan = req.plan;
+    const { plan } = req;
 
     if (plan !== "premium") {
-      return res.json({
+      return res.status(403).json({
         success: false,
         message: "This feature is available for premium users only.",
       });
@@ -262,44 +289,53 @@ export const reviewResume = async (req: AuthenticatedRequest, res: Response): Pr
       });
     }
 
-    if(resume.size > 5 * 1024 * 1024)
-    {
+    if (resume.size > 5 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
         message: "File size exceeds 5MB limit",
       });
     }
 
-    if(resume.mimetype !== 'application/pdf')
-    {
+    if (resume.mimetype !== "application/pdf") {
       return res.status(400).json({
         success: false,
         message: "Only PDF files are allowed",
       });
     }
 
-    const dataBuffer = fs.readFileSync(resume.path);
-    const pdfData = await (pdfParse as any).default(dataBuffer);
+    const resumeText = await extractTextFromPDF(resume.path);
+    fs.unlinkSync(resume.path);
 
-    const prompt = `Review the following resume and provide feedback on its strengths and areas for improvement. ResumeContent:\n\n${pdfData.text}`;
+    const prompt = `
+      You are a professional technical recruiter.
 
-    const response = await AI.chat.completions.create({
-      model: process.env.AI_AGENT_MODEL!,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+      TASK:
+      Analyze the resume below and produce a structured evaluation.
 
-    const content = response.choices?.[0]?.message?.content ?? "";
+      RESPONSE FORMAT (MANDATORY):
+      - Strengths (bullet points)
+      - Weaknesses (bullet points)
+      - Concrete improvements (actionable advice)
+      - Overall score (0–10)
+
+      DO NOT repeat the resume.
+      DO NOT repeat the instructions.
+      ONLY provide the analysis.
+
+      RESUME:
+      ${resumeText}
+      `;
+
+    const content = await callGemini(prompt);
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
-      VALUES (${userId}, 'Review the uploaded resume', ${content}, 'resume-review')
+      VALUES (${userId}, 'Review uploaded resume', ${content}, 'resume-review')
     `;
 
-    return res.json({ success: true, content: content });
-  } catch (error: any) {
-    console.error("removeImageBackground error:", error.message);
-    return res.json({ success: false, message: error.message });
+    return res.json({ success: true, content });
+  } catch (error) {
+    console.error("reviewResume error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

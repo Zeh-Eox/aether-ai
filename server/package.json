@@ -14,17 +14,19 @@
   "type": "commonjs",
   "dependencies": {
     "@clerk/express": "^1.7.37",
+    "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.0.2",
-    "@types/pdf-parse": "^1.1.5",
+    "@types/pdfjs-dist": "^2.10.377",
     "axios": "^1.12.2",
     "canvas": "^3.2.0",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
     "multer": "^2.0.2",
     "openai": "^6.3.0",
-    "pdf-parse": "^2.4.3"
+    "pdfjs-dist": "^5.4.530"
   },
   "devDependencies": {
     "@types/canvasjs": "^1.9.11",

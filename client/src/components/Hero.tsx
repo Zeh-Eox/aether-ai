@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { assets } from "../constants/assets";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import toast from "react-hot-toast";
 
 const Hero: React.FunctionComponent = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const Hero: React.FunctionComponent = () => {
           className="px-10 py-3 rounded-lg border border-primary cursor-pointer"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => toast.error("Demo not available yet")}
         >
           Watch Demo
         </motion.button>
