@@ -5,7 +5,7 @@ interface PropTypes {
   item: Record<string, any>;
 }
 
-const CreationItem = ({ item }: PropTypes): React.JSX.Element => {
+const CreationItem: React.FC<PropTypes> = ({ item }) => {
   const [expanded, setExpanded] = React.useState<boolean>(false);
 
   return (

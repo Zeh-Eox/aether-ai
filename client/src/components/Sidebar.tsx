@@ -10,7 +10,7 @@ interface PropTypes {
   setSidebar: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const Sidebar = ({ sidebar, setSidebar }: PropTypes): React.JSX.Element => {
+const Sidebar: React.FC<PropTypes> = ({ sidebar, setSidebar }) => {
   const { user } = useUser();
   const { signOut, openUserProfile } = useClerk();
 
