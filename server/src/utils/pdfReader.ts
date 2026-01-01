@@ -1,7 +1,8 @@
 import fs from "fs";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const extractTextFromPDF = async (filePath: string): Promise<string> => {
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
   const data = new Uint8Array(fs.readFileSync(filePath));
   const pdf = await pdfjsLib.getDocument({ data }).promise;
 
