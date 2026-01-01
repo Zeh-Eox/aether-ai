@@ -8,27 +8,19 @@ import userRouter from "./routes/userRoutes";
 
 const app = express();
 
-async function startServer() {
-  await connectCloudinary();
+connectCloudinary();
 
-  app.use(cors());
-  app.use(express.json());
-  app.use(clerkMiddleware());
+app.use(cors());
+app.use(express.json());
+app.use(clerkMiddleware());
 
-  app.get("/", (req: Request, res: Response) => {
-    res.send("Server is Live");
-  });
+app.get("/", (req: Request, res: Response) => {
+  res.send("Server is Live 🚀");
+});
 
-  app.use(requireAuth());
+app.use(requireAuth());
 
-  app.use('/api/v1/ai', aiRouter);
-  app.use('/api/v1/user', userRouter);
+app.use("/api/v1/ai", aiRouter);
+app.use("/api/v1/user", userRouter);
 
-  const PORT: number = Number(process.env.PORT) || 3000;
-
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-  });
-}
-
-startServer();
+export default app;
