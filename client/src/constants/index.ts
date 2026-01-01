@@ -55,5 +55,5 @@ export const blogCategories: string[] = [
 ]
 
 export const imageStyles: string[] = [
-  'Realistic Style', 'Ghibli Style', 'Anime Style', 'Cartoon Style', 'Fantasy Style', '3D Style'
+  'Realistic Style', 'Ghibli Style', 'Anime Style', 'Cartoon Style', 'Fantasy Style', '3D Style', 'Pixel Art Style', 'Watercolor Style', 'Oil Painting Style', 'Sketch Style'
 ]
