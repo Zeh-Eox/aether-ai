@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import { Audio } from "react-loader-spinner";
 
 axios.defaults.baseURL =
   import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
@@ -42,7 +41,7 @@ const GenerateImage: React.FunctionComponent = () => {
       );
 
       if (data.success) {
-        setGeneratedImageUrl(data.imageUrl);
+        setGeneratedImageUrl(data.content);
       } else {
         toast.error(data.message || "Failed to generate image");
       }
@@ -124,7 +123,10 @@ const GenerateImage: React.FunctionComponent = () => {
           disabled={loading}
         >
           {loading ? (
-            <Audio height="24" width="24" color="white" ariaLabel="loading" />
+            <>
+              <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+              Generating Image...
+            </>
           ) : (
             <>
               <Image className="w-5" /> Generate Image
