@@ -6,7 +6,6 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import Markdown from "react-markdown";
 import { useAuth } from "@clerk/clerk-react";
-import { Audio } from "react-loader-spinner";
 
 axios.defaults.baseURL =
   import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
@@ -103,7 +102,10 @@ const BlogTitle: React.FunctionComponent = () => {
           disabled={loading}
         >
           {loading ? (
-            <Audio height={20} width={20} color="white" ariaLabel="loading" />
+            <>
+              <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+              Generating Article...
+            </>
           ) : (
             <>
               <Hash className="w-5" /> Generate Title

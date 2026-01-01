@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import { Audio } from "react-loader-spinner";
 import Markdown from "react-markdown";
 
 axios.defaults.baseURL =
@@ -105,7 +104,10 @@ const WriteArticle: React.FunctionComponent = () => {
           disabled={loading}
         >
           {loading ? (
-            <Audio height="24" width="24" color="white" ariaLabel="loading" />
+            <>
+              <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+              Generating Article...
+            </>
           ) : (
             <>
               <Edit className="w-5" /> Generate Article
