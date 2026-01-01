@@ -3,15 +3,58 @@ import React from "react";
 import { articleLength } from "../constants";
 import type { ArticleLength } from "../types";
 import { motion } from "framer-motion";
+import axios from "axios";
+import { useAuth } from "@clerk/clerk-react";
+import toast from "react-hot-toast";
+import { Audio } from "react-loader-spinner";
+import Markdown from "react-markdown";
+
+axios.defaults.baseURL =
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
 const WriteArticle: React.FunctionComponent = () => {
   const [selectedLength, setSelectedLength] = React.useState<ArticleLength>(
     articleLength[0]
   );
   const [input, setInput] = React.useState<string>("");
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [generatedArticle, setGeneratedArticle] = React.useState<string>("");
+
+  const { getToken } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    try {
+      setLoading(true);
+      const prompt = `Write a detailed article about "${input}" with a word count of approximately ${selectedLength.text} words. The article should be well-structured, engaging, and informative.`;
+
+      const { data } = await axios.post(
+        "/ai/generate-article",
+        {
+          prompt,
+          length: selectedLength.length,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        }
+      );
+
+      if (data.success) {
+        setGeneratedArticle(data.content);
+      } else {
+        toast.error(data.message || "Failed to generate article");
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        toast.error(error.response?.data?.message || "API error");
+      } else {
+        toast.error("Unexpected error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,8 +102,15 @@ const WriteArticle: React.FunctionComponent = () => {
           className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#226BFF] to-[#65ADFF] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
+          disabled={loading}
         >
-          <Edit className="w-5" /> Generate Article
+          {loading ? (
+            <Audio height="24" width="24" color="white" ariaLabel="loading" />
+          ) : (
+            <>
+              <Edit className="w-5" /> Generate Article
+            </>
+          )}
         </motion.button>
       </form>
       <div className="w-full max-w-lg p-4 bg-white rounded-lg flex flex-col border border-gray-200 min-h-[352px] max-h-[600px]">
@@ -68,14 +118,23 @@ const WriteArticle: React.FunctionComponent = () => {
           <Edit className="w-5 h-5 text-[#4A7AFF]" />
           <h1 className="text-xl font-semibold">Generated Article</h1>
         </div>
-        <div className="flex flex-1 justify-center items-center">
-          <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
-            <Edit className="w-9 h-9" />
-            <p>
-              Enter a topic and click <b>Generate Article</b> to get started
-            </p>
+
+        {!generatedArticle ? (
+          <div className="flex flex-1 justify-center items-center">
+            <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
+              <Edit className="w-9 h-9" />
+              <p>
+                Enter a topic and click <b>Generate Article</b> to get started
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
+            <div className="reset-tw">
+              <Markdown>{generatedArticle}</Markdown>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
