@@ -1,6 +1,5 @@
 import Home from "../pages/Home";
 import BlogTitle from "../pages/BlogTitle";
-import Community from "../pages/Community";
 import Dashboard from "../pages/Dashboard";
 import GenerateImage from "../pages/GenerateImage";
 import type { RouteItem } from "../types";
@@ -16,12 +15,6 @@ export const ROUTES: RouteItem[] = [
     title: "Blog Title",
     route: "blog-title",
     component: BlogTitle,
-    isAiRoute: true
-  },
-  {
-    title: "Community",
-    route: "community",
-    component: Community,
     isAiRoute: true
   },
   {

@@ -16,8 +16,6 @@ const RemoveObject: React.FunctionComponent = () => {
 
   const { getToken } = useAuth();
 
-  console.log(file);
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {

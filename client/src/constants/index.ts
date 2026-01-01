@@ -1,4 +1,4 @@
-import { Eraser, FileText, Hash, House, Image, Scissors, SquarePen, Users } from "lucide-react";
+import { Eraser, FileText, Hash, House, Image, Scissors, SquarePen } from "lucide-react";
 import type { ArticleLength, NavItems } from "../types";
 
 export const navItems: NavItems[] = [
@@ -36,12 +36,7 @@ export const navItems: NavItems[] = [
     to: "/ai/review-resume",
     label: "Review Resume",
     Icon: FileText
-  },
-  {
-    to: "/ai/community",
-    label: "Community",
-    Icon: Users
-  },
+  }
 ]
 
 export const articleLength: ArticleLength[] = [
