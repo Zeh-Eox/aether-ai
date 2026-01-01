@@ -118,13 +118,11 @@ const RemoveBackground: React.FunctionComponent = () => {
             </div>
           </div>
         ) : (
-          <div className="mt-3 flex justify-center items-center h-full">
-            <img
-              src={processedImage}
-              alt="Processed Image"
-              className="w-full h-full"
-            />
-          </div>
+          <img
+            src={processedImage}
+            alt="Processed Image"
+            className="w-full h-full"
+          />
         )}
       </div>
     </div>
