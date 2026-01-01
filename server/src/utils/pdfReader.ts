@@ -1,9 +1,7 @@
-import fs from "fs";
-
-const extractTextFromPDF = async (filePath: string): Promise<string> => {
+export const extractTextFromPDF = async (buffer: Buffer): Promise<string> => {
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-  const data = new Uint8Array(fs.readFileSync(filePath));
+  const data = new Uint8Array(buffer);
   const pdf = await pdfjsLib.getDocument({ data }).promise;
 
   let text = "";
@@ -11,12 +9,8 @@ const extractTextFromPDF = async (filePath: string): Promise<string> => {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-
-    const strings = content.items.map((item: any) => item.str);
-    text += strings.join(" ") + "\n";
+    text += content.items.map((item: any) => item.str).join(" ") + "\n";
   }
 
   return text;
 };
-
-export { extractTextFromPDF };

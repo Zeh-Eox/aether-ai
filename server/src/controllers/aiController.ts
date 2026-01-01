@@ -4,7 +4,6 @@ import { AuthenticatedRequest } from "../types";
 import { Response } from "express";
 import axios from "axios";
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
 import FormData from "form-data";
 import { callGemini } from "../utils/callGemini";
 import { extractTextFromPDF } from "../utils/pdfReader";
@@ -200,11 +199,12 @@ export const removeImageBackground = async (
       });
     }
 
-    const { secure_url } = await cloudinary.uploader.upload(image.path, {
-      transformation: [{ effect: "background_removal" }],
-    });
-
-    fs.unlinkSync(image.path);
+    const { secure_url } = await cloudinary.uploader.upload(
+      `data:${image.mimetype};base64,${image.buffer.toString("base64")}`,
+      {
+        transformation: [{ effect: "background_removal" }],
+      }
+    );
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
@@ -245,11 +245,12 @@ export const removeImageObject = async (
       });
     }
 
-    const { secure_url } = await cloudinary.uploader.upload(image.path, {
-      transformation: [{ effect: `gen_remove:${object}` }],
-    });
-
-    fs.unlinkSync(image.path);
+    const { secure_url } = await cloudinary.uploader.upload(
+      `data:${image.mimetype};base64,${image.buffer.toString("base64")}`,
+      {
+        transformation: [{ effect: `gen_remove:${object}` }],
+      }
+    );
 
     await database`
       INSERT INTO creations (user_id, prompt, content, type)
@@ -303,8 +304,7 @@ export const reviewResume = async (
       });
     }
 
-    const resumeText = await extractTextFromPDF(resume.path);
-    fs.unlinkSync(resume.path);
+    const resumeText = await extractTextFromPDF(resume.buffer);
 
     const prompt = `
       You are a professional technical recruiter.
