@@ -1,24 +1,27 @@
 export const extractTextFromPDF = async (buffer: Buffer): Promise<string> => {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const pdfjsLib = pdfjs.default ?? pdfjs;
-
-  // Désactiver le worker pour éviter les problèmes en serverless
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-
-  const data = new Uint8Array(buffer);
-  const pdf = await pdfjsLib.getDocument({ 
-    data,
-    useSystemFonts: true,
-    standardFontDataUrl: undefined
-  }).promise;
-
-  let text = "";
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map((item: any) => item.str).join(" ") + "\n";
-  }
-
-  return text;
+  const PDFParser = (await import("pdf2json")).default;
+  
+  return new Promise((resolve, reject) => {
+    const pdfParser = new (PDFParser as any)(null, 1);
+    
+    pdfParser.on("pdfParser_dataError", (errData: any) => 
+      reject(new Error(errData.parserError))
+    );
+    
+    pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+      try {
+        const text = pdfData.Pages?.map((page: any) =>
+          page.Texts?.map((text: any) =>
+            text.R?.map((r: any) => decodeURIComponent(r.T || "")).join("") || ""
+          ).join(" ") || ""
+        ).join("\n") || "";
+        
+        resolve(text);
+      } catch (error) {
+        reject(error);
+      }
+    });
+    
+    pdfParser.parseBuffer(buffer);
+  });
 };
