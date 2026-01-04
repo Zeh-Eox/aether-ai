@@ -8,6 +8,8 @@ import userRouter from "./routes/userRoutes";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 connectCloudinary();
 
 app.use(cors());
